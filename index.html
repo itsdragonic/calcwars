@@ -16,6 +16,11 @@
         .buttons {
             margin-top: 20px;
         }
+        .unusable {
+            color: #666;
+            background-color: #eee;
+            border: #999;
+        }
         button {
             font-size: 18px;
             margin: 5px;
@@ -28,25 +33,33 @@
     <div id="expression">x</div>
     <div class="buttons">
         <button onclick="applyLn()">\( \ln(x) \)</button>
+        <button onclick="exponentiate()">\( e^x \)</button>
         <button onclick="differentiate()">\( \frac{d}{dx} \)</button>
-        <button onclick="integrate()">\( \int \, dx \)</button>
+        <button onclick="integrate()" id="int" class="unusable">\( \int \, dx \)</button>
         <button onclick="reciprocal()">\( \frac{1}{x} \)</button>
     </div>
 
     <script>
-        let expr = "sin(x)^2";
+        let expr = "x ^ 100";
         updateExpression(expr);
+        var prevExpr = "";
+        var prevFunc = "";
 
         function updateExpression(newExpr) {
             expr = newExpr;
 
             let simplifiedExpr = math.simplify(expr).toString();
+            //console.log(simplifiedExpr);
+
             document.getElementById("expression").innerHTML = `\\( ${math.parse(simplifiedExpr).toTex()} \\)`;
             MathJax.typesetPromise();
             checkWin();
         }
 
         function applyLn() {
+            prevFunc = "ln";
+            prevExpr = expr;
+
             // Check for exactly one exponentiation operation
             if ((expr.match(/\^/g) || []).length === 1) {
                 // Move the exponent outside the logarithm
@@ -58,7 +71,19 @@
             }
         }
 
+        function exponentiate() {
+            prevFunc = "exp";
+            prevExpr = expr;
+
+            let newExpr =  `e^(${expr})`;
+            updateExpression(newExpr);
+        }
+
         function differentiate() {
+            prevFunc = "dx";
+            prevExpr = expr;
+            document.getElementById("int").classList.remove("unusable");
+
             try {
                 let derivative = math.derivative(expr, 'x').toString();
                 updateExpression(derivative);
@@ -68,11 +93,21 @@
         }
 
         function integrate() {
+            if (prevFunc == "dx") {
+                updateExpression(prevExpr);
+            }
+
+            prevFunc = "int";
+            prevExpr = expr;
+            document.getElementById("int").classList.add("unusable");
+
             // add an integral symbol
-            updateExpression(newExpr);
         }
 
         function reciprocal() {
+            prevFunc = "recip";
+            prevExpr = expr;
+
             let newExpr = `1 / (${expr})`;
             updateExpression(newExpr);
         }
