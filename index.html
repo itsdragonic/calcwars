@@ -1,1 +1,74 @@
-hi
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Game</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.9.0/math.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/algebrite/1.2.0/algebrite.bundle.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        .buttons {
+            margin-top: 20px;
+        }
+        button {
+            font-size: 18px;
+            margin: 5px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Math Expression Game</h1>
+    <div id="expression">\( x^{50} \)</div>
+    <div class="buttons">
+        <button onclick="applyLn()">ln(x)</button>
+        <button onclick="differentiate()">d/dx</button>
+        <button onclick="integrate()">Integral</button>
+    </div>
+
+    <script>
+        let expr = "x^50";
+
+        function updateExpression(newExpr) {
+            expr = newExpr;
+            document.getElementById("expression").innerHTML = `\\( ${math.parse(expr).toTex()} \\)`;
+            MathJax.typesetPromise();
+            checkWin();
+        }
+
+        function applyLn() {
+            updateExpression(`log(${expr})`);
+        }
+
+        function differentiate() {
+            try {
+                let derivative = math.derivative(expr, 'x').toString();
+                updateExpression(derivative);
+            } catch (error) {
+                alert("Could not differentiate the expression.");
+            }
+        }
+
+        function integrate() {
+            try {
+                let integral = Algebrite.integral(expr).toString();
+                updateExpression(integral);
+            } catch (error) {
+                alert("Could not integrate the expression.");
+            }
+        }
+
+        function checkWin() {
+            if (expr === "0") {
+                document.getElementById("expression").innerHTML = "🎉 Congratulations! You reached 0! 🎉";
+            }
+        }
+    </script>
+</body>
+</html>
