@@ -3,174 +3,362 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CalcWars</title>
+    <title>Math Combat</title>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.9.0/math.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/algebrite/1.2.0/algebrite.bundle.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; }
-        .buttons { margin-top: 20px; }
-        .unusable { color: #666; background-color: #eee; border: #999; }
-        button { font-size: 18px; margin: 5px; padding: 10px; }
-        #operator-count {
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0;
+            overflow: hidden;
+            height: 100vh;
+        }
+        #game-container {
+            position: relative;
+            width: 90vw;
+            height: 60vh;
+            margin: 20px auto;
+            border: 3px solid #333;
+            border-radius: 10px;
+        }
+        .target {
             position: absolute;
+            cursor: pointer;
+            padding: 10px;
+            border: 2px solid #333;
+            border-radius: 5px;
+            background-color: white;
+            transition: all 0.2s;
+            transform: translate(-50%, -50%);
+        }
+        .target.dead {
+            opacity: 0.3;
+            transform: scale(0.8) translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .target.selected {
+            border-color: #ff4444;
+            box-shadow: 0 0 10px rgba(255,68,68,0.5);
+        }
+        .target.operation-selected {
+            background-color: #ffcccc;
+        }
+        .operator-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.9);
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            display: flex;
+            gap: 5px;
+        }
+        button.operator {
+            font-size: 18px;
+            margin: 5px;
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 50px;
+        }
+        button.selected-operator {
+            background-color: #44ff44;
+            transform: scale(1.1);
+        }
+        #operator-count {
+            position: fixed;
             top: 10px;
             left: 10px;
             font-size: 18px;
-            font-weight: bold;
         }
         #reset-button {
-            position: absolute;
+            position: fixed;
             top: 10px;
             right: 10px;
-            font-size: 18px;
-            padding: 5px 10px;
         }
     </style>
 </head>
 <body>
-    <h1>Reach Zero ASAP</h1>
     <div id="operator-count">Operators Used: 0</div>
     <button id="reset-button" onclick="resetGame()">Reset</button>
-    <div id="expression">x</div>
-    <div class="buttons">
-        <button onclick="applyLn()">\( \ln(x) \)</button>
-        <button onclick="exponentiate()">\( e^x \)</button>
-        <button onclick="differentiate()">\( \frac{d}{dx} \)</button>
-        <button onclick="integrate()" id="int" class="unusable">\( \int \, dx \)</button>
-        <button onclick="reciprocal()">\( \frac{1}{x} \)</button>
+    <div id="game-container"></div>
+    <div class="operator-panel">
+        <button class="operator" onclick="selectOperator('ln')">ln(x)</button>
+        <button class="operator" onclick="selectOperator('exp')">e^x</button>
+        <button class="operator" onclick="selectOperator('diff')">d/dx</button>
+        <button class="operator" onclick="selectOperator('recip')">1/x</button>
+        <button class="operator" onclick="selectOperator('add')">+</button>
+        <button class="operator" onclick="selectOperator('sub')">-</button>
+        <button class="operator" onclick="selectOperator('mul')">×</button>
+        <button class="operator" onclick="selectOperator('div')">÷</button>
     </div>
 
     <script>
-        let expr = "x ^ 100";
-        let operatorCount = 0; // Counter for operator usage
-        let differentiationHistory = [];
-        let prevExpr = "";
-        let prevFunc = "";
+        let operatorCount = 0;
+        let selectedOperator = null;
+        let targets = [];
+        let mouseX = 0;
+        let mouseY = 0;
+        let binaryOperationState = {
+            active: false,
+            firstTarget: null,
+            firstIndex: null
+        };
+        const initialEquations = ["sin(x)", "tan(x)", "x^5", "e^(2x)", "x^3 + x^2", "4", "3", "2x", "5x"];
+        const gameContainer = document.getElementById('game-container');
+        
+        // Track mouse position
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
 
-        // Initialize the game
-        resetGame();
-
-        function updateExpression(newExpr) {
-            expr = newExpr;
-            let simplifiedExpr = math.simplify(expr).toString();
-            document.getElementById("expression").innerHTML = `\\( ${math.parse(simplifiedExpr).toTex()} \\)`;
+        function initializeTargets() {
+            gameContainer.innerHTML = '';
+            targets = initialEquations.map((eq, i) => {
+                const el = document.createElement('div');
+                el.className = 'target';
+                
+                // Random position within container
+                const bounds = gameContainer.getBoundingClientRect();
+                const x = bounds.left + Math.random() * bounds.width;
+                const y = bounds.top + Math.random() * bounds.height;
+                
+                el.style.left = `${x}px`;
+                el.style.top = `${y}px`;
+                el.innerHTML = `\\( ${math.parse(eq).toTex()} \\)`;
+                el.dataset.expression = eq;
+                el.dataset.alive = "true";
+                
+                // Add velocity properties
+                el.velocityX = (Math.random() - 0.5) * 0.5;
+                el.velocityY = (Math.random() - 0.5) * 0.5;
+                
+                el.onclick = () => handleTargetClick(el, i);
+                gameContainer.appendChild(el);
+                return {
+                    element: el,
+                    expression: eq,
+                    alive: true,
+                    velocityX: el.velocityX,
+                    velocityY: el.velocityY
+                };
+            });
+            
             MathJax.typesetPromise();
-            checkWin();
+            startMovement();
         }
 
-        function incrementOperatorCount() {
-            operatorCount++;
-            document.getElementById("operator-count").textContent = `Operators Used: ${operatorCount}`;
-        }
-
-        function applyLn() {
-            clearDifferentiationHistory();
-            prevFunc = "ln";
-            prevExpr = expr;
-            incrementOperatorCount();
-
-            // Check if the expression is e^... or exp(...)
-            try {
-                const node = math.parse(expr);
-                let isExp = false;
-                let exponent = null;
-
-                if (node.isOperatorNode && node.op === '^' && node.args[0].toString() === 'e') {
-                    // Case: e^something
-                    isExp = true;
-                    exponent = node.args[1];
-                } else if (node.isFunctionNode && node.name === 'exp' && node.args.length === 1) {
-                    // Case: exp(something)
-                    isExp = true;
-                    exponent = node.args[0];
-                }
-
-                if (isExp) {
-                    // Simplify ln(e^exponent) to just the exponent
-                    updateExpression(exponent.toString());
-                    return; // Exit early to avoid further processing
-                }
-            } catch (error) {
-                console.log("Could not parse expression:", error);
+        function startMovement() {
+            function animate() {
+                const bounds = gameContainer.getBoundingClientRect();
+                targets.forEach(target => {
+                    if (!target.alive) return;
+                    
+                    // Get element position
+                    const rect = target.element.getBoundingClientRect();
+                    const x = rect.left + rect.width/2;
+                    const y = rect.top + rect.height/2;
+                    
+                    // Calculate distance to mouse
+                    const dx = mouseX - x;
+                    const dy = mouseY - y;
+                    const distance = Math.sqrt(dx*dx + dy*dy);
+                    
+                    // Flee from cursor
+                    if (distance < 150) {
+                        const force = 0.2;
+                        target.velocityX -= (dx/distance) * force;
+                        target.velocityY -= (dy/distance) * force;
+                    }
+                    
+                    // Apply velocity
+                    const speedLimit = 2;
+                    const currentSpeed = Math.sqrt(target.velocityX**2 + target.velocityY**2);
+                    if (currentSpeed > speedLimit) {
+                        target.velocityX = (target.velocityX / currentSpeed) * speedLimit;
+                        target.velocityY = (target.velocityY / currentSpeed) * speedLimit;
+                    }
+                    
+                    let newX = parseFloat(target.element.style.left) + target.velocityX;
+                    let newY = parseFloat(target.element.style.top) + target.velocityY;
+                    
+                    // Constrain within game container
+                    const targetWidth = rect.width;
+                    const targetHeight = rect.height;
+                    if (newX < bounds.left) {
+                        newX = bounds.left;
+                        target.velocityX *= -0.5;
+                    }
+                    if (newX > bounds.right - targetWidth) {
+                        newX = bounds.right - targetWidth;
+                        target.velocityX *= -0.5;
+                    }
+                    if (newY < bounds.top) {
+                        newY = bounds.top;
+                        target.velocityY *= -0.5;
+                    }
+                    if (newY > bounds.bottom - targetHeight) {
+                        newY = bounds.bottom - targetHeight;
+                        target.velocityY *= -0.5;
+                    }
+                    
+                    target.element.style.left = `${newX}px`;
+                    target.element.style.top = `${newY}px`;
+                });
+                
+                requestAnimationFrame(animate);
             }
+            animate();
+        }
 
-            // Existing logic for other cases
-            if ((expr.match(/\^/g) || []).length === 1) {
-                let parts = expr.split('^');
-                let newExpr = `log(${parts[0]}) * ${parts[1]}`;
-                updateExpression(newExpr);
+        function handleTargetClick(targetElement, index) {
+            if (!targets[index].alive) return;
+
+            if (['add', 'sub', 'mul', 'div'].includes(selectedOperator)) {
+                handleBinaryOperation(targetElement, index);
             } else {
-                updateExpression(`log(${expr})`);
+                applyUnaryOperator(targetElement, index);
             }
         }
 
-        function exponentiate() {
-            clearDifferentiationHistory();
-            prevFunc = "exp";
-            prevExpr = expr;
-            incrementOperatorCount();
-            let newExpr = `e^(${expr})`;
-            updateExpression(newExpr);
-        }
+        function handleBinaryOperation(targetElement, index) {
+            if (!binaryOperationState.active) {
+                // First selection
+                binaryOperationState = {
+                    active: true,
+                    firstTarget: targetElement,
+                    firstIndex: index
+                };
+                targetElement.classList.add('operation-selected');
+            } else if (binaryOperationState.firstIndex === index) {
+                // Clicked the same target twice - reset
+                binaryOperationState.firstTarget.classList.remove('operation-selected');
+                binaryOperationState = { active: false, firstTarget: null, firstIndex: null };
+            } else {
+                // Second selection
+                const firstIndex = binaryOperationState.firstIndex;
+                const firstExpr = targets[firstIndex].expression;
+                const secondExpr = targets[index].expression;
+                let newExpr;
 
-        function differentiate() {
-            prevFunc = "dx";
-            prevExpr = expr;
-            incrementOperatorCount();
-            document.getElementById("int").classList.remove("unusable");
+                try {
+                    switch(selectedOperator) {
+                        case 'add': 
+                            newExpr = math.simplify(`(${firstExpr}) + (${secondExpr})`).toString();
+                            break;
+                        case 'sub': 
+                            newExpr = math.simplify(`(${firstExpr}) - (${secondExpr})`).toString();
+                            break;
+                        case 'mul': 
+                            newExpr = `(${firstExpr}) * (${secondExpr})`;
+                            break;
+                        case 'div': 
+                            newExpr = `(${firstExpr}) / (${secondExpr})`;
+                            break;
+                    }
 
-            try {
-                let derivative = math.derivative(expr, 'x').toString();
-                differentiationHistory.push(expr);
-                updateExpression(derivative);
-            } catch (error) {
-                alert("Could not differentiate the expression.");
-            }
-        }
-
-        function integrate() {
-            incrementOperatorCount();
-            if (differentiationHistory.length > 0) {
-                let previousExpr = differentiationHistory.pop();
-                updateExpression(previousExpr);
-                if (differentiationHistory.length === 0) {
-                    document.getElementById("int").classList.add("unusable");
+                    // Update first target
+                    targets[firstIndex].expression = newExpr;
+                    binaryOperationState.firstTarget.innerHTML = `\\( ${math.parse(newExpr).toTex()} \\)`;
+                    
+                    // Kill second target
+                    targets[index].alive = false;
+                    targetElement.classList.add('dead');
+                    
+                    // Reset styles and state
+                    binaryOperationState.firstTarget.classList.remove('operation-selected');
+                    binaryOperationState = { active: false, firstTarget: null, firstIndex: null };
+                    operatorCount++;
+                    document.getElementById('operator-count').textContent = `Operators Used: ${operatorCount}`;
+                    MathJax.typesetPromise();
+                    checkVictory();
+                } catch (error) {
+                    alert(`Cannot perform operation: ${error.message}`);
+                    binaryOperationState.firstTarget.classList.remove('operation-selected');
+                    binaryOperationState = { active: false, firstTarget: null, firstIndex: null };
                 }
             }
         }
 
-        function reciprocal() {
-            clearDifferentiationHistory();
-            prevFunc = "recip";
-            prevExpr = expr;
-            incrementOperatorCount();
-            let newExpr = `1 / (${expr})`;
-            updateExpression(newExpr);
-        }
+        function applyUnaryOperator(targetElement, index) {
+            if (!selectedOperator || !targets[index].alive) return;
 
-        function checkWin() {
-            if (expr === "0") {
-                document.getElementById("expression").innerHTML = "🎉 Level complete! You reached 0! 🎉";
+            operatorCount++;
+            document.getElementById('operator-count').textContent = `Operators Used: ${operatorCount}`;
+
+            let newExpr;
+            const currentExpr = targets[index].expression;
+
+            try {
+                switch(selectedOperator) {
+                    case 'ln': newExpr = handleNaturalLog(currentExpr); break;
+                    case 'exp': newExpr = `e^(${currentExpr})`; break;
+                    case 'diff': newExpr = math.derivative(currentExpr, 'x').toString(); break;
+                    case 'recip': newExpr = `1/(${currentExpr})`; break;
+                }
+
+                targets[index].expression = newExpr;
+                targetElement.dataset.expression = newExpr;
+                const simplified = math.simplify(newExpr).toString();
+                targetElement.innerHTML = `\\( ${math.parse(simplified).toTex()} \\)`;
+
+                if (simplified === "0") {
+                    targetElement.classList.add('dead');
+                    targets[index].alive = false;
+                    checkVictory();
+                }
+            } catch (error) {
+                alert(`Cannot apply ${selectedOperator} to this expression!`);
             }
+            MathJax.typesetPromise();
         }
 
-        function clearDifferentiationHistory() {
-            differentiationHistory = [];
-            document.getElementById("int").classList.add("unusable");
+        function handleNaturalLog(expr) {
+            const node = math.parse(expr);
+            if (node.isOperatorNode && node.op === '^' && node.args[0].toString() === 'e') {
+                return node.args[1].toString();
+            }
+            if (node.isFunctionNode && node.name === 'exp') {
+                return node.args[0].toString();
+            }
+            return `log(${expr})`;
+        }
+
+        function checkVictory() {
+            if (targets.every(t => !t.alive)) {
+                alert(`Victory! All targets eliminated in ${operatorCount} moves!`);
+            }
         }
 
         function resetGame() {
-            expr = "x ^ 100";
             operatorCount = 0;
-            differentiationHistory = [];
-            prevExpr = "";
-            prevFunc = "";
-            updateExpression(expr);
-            document.getElementById("operator-count").textContent = `Operators Used: ${operatorCount}`;
-            document.getElementById("int").classList.add("unusable");
+            selectedOperator = null;
+            binaryOperationState = { active: false, firstTarget: null, firstIndex: null };
+            document.getElementById('operator-count').textContent = `Operators Used: 0`;
+            document.querySelectorAll('.operator').forEach(btn => 
+                btn.classList.remove('selected-operator'));
+            initializeTargets();
         }
+
+        function selectOperator(op) {
+            // Reset any binary operation in progress
+            if (binaryOperationState.active) {
+                binaryOperationState.firstTarget?.classList.remove('operation-selected');
+                binaryOperationState = { active: false, firstTarget: null, firstIndex: null };
+            }
+
+            selectedOperator = op;
+            document.querySelectorAll('.operator').forEach(btn => 
+                btn.classList.remove('selected-operator'));
+            event.target.classList.add('selected-operator');
+        }
+
+        // Initial setup
+        initializeTargets();
     </script>
 </body>
 </html>
