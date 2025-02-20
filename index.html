@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Math Combat</title>
+    <title>Math Wars</title>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.9.0/math.min.js"></script>
@@ -21,6 +21,17 @@
             margin: 20px auto;
             border: 3px solid #333;
             border-radius: 10px;
+        }
+        #player {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            background-color: red;
+            border-radius: 50%;
+            z-index: 999;
         }
         .target {
             position: absolute;
@@ -74,6 +85,12 @@
             left: 10px;
             font-size: 18px;
         }
+        #health-display {
+            position: fixed;
+            top: 10px;
+            left: 150px;
+            font-size: 18px;
+        }
         #reset-button {
             position: fixed;
             top: 10px;
@@ -83,8 +100,11 @@
 </head>
 <body>
     <div id="operator-count">Operators Used: 0</div>
+    <div id="health-display">Health: 5</div>
     <button id="reset-button" onclick="resetGame()">Reset</button>
-    <div id="game-container"></div>
+    <div id="game-container">
+        <div id="player"></div>
+    </div>
     <div class="operator-panel">
         <button class="operator" onclick="selectOperator('ln')">ln(x)</button>
         <button class="operator" onclick="selectOperator('exp')">e^x</button>
@@ -100,8 +120,7 @@
         let operatorCount = 0;
         let selectedOperator = null;
         let targets = [];
-        let mouseX = 0;
-        let mouseY = 0;
+        let playerHealth = 5;
         let binaryOperationState = {
             active: false,
             firstTarget: null,
@@ -110,19 +129,16 @@
         const initialEquations = ["math.asin(x)", "math.atan(x)", "sin(x)", "tan(x)", "x^5", "e^(2x)", "x^3 + x^2", "4", "3", "2x", "5x"];
         const gameContainer = document.getElementById('game-container');
         
-        // Track mouse position
-        document.addEventListener('mousemove', (e) => {
-            mouseX = e.clientX;
-            mouseY = e.clientY;
-        });
+        function updateHealthDisplay() {
+            document.getElementById('health-display').textContent = `Health: ${playerHealth}`;
+        }
 
         function initializeTargets() {
-            gameContainer.innerHTML = '';
+            gameContainer.innerHTML = '<div id="player"></div>';
             targets = initialEquations.map((eq, i) => {
                 const el = document.createElement('div');
                 el.className = 'target';
                 
-                // Random position within container
                 const bounds = gameContainer.getBoundingClientRect();
                 const x = bounds.left + Math.random() * bounds.width;
                 const y = bounds.top + Math.random() * bounds.height;
@@ -133,9 +149,8 @@
                 el.dataset.expression = eq;
                 el.dataset.alive = "true";
                 
-                // Add velocity properties
-                el.velocityX = (Math.random() - 0.5) * 0.5;
-                el.velocityY = (Math.random() - 0.5) * 0.5;
+                el.velocityX = 0;
+                el.velocityY = 0;
                 
                 el.onclick = () => handleTargetClick(el, i);
                 gameContainer.appendChild(el);
@@ -154,39 +169,44 @@
 
         function startMovement() {
             function animate() {
-                const bounds = gameContainer.getBoundingClientRect();
+                const playerRect = document.getElementById('player').getBoundingClientRect();
+                const playerCenterX = playerRect.left + playerRect.width / 2;
+                const playerCenterY = playerRect.top + playerRect.height / 2;
+
                 targets.forEach(target => {
                     if (!target.alive) return;
-                    
+
                     // Get element position
                     const rect = target.element.getBoundingClientRect();
-                    const x = rect.left + rect.width/2;
-                    const y = rect.top + rect.height/2;
-                    
-                    // Calculate distance to mouse
-                    const dx = mouseX - x;
-                    const dy = mouseY - y;
-                    const distance = Math.sqrt(dx*dx + dy*dy);
-                    
-                    // Flee from cursor
-                    if (distance < 150) {
-                        const force = 0.2;
-                        target.velocityX -= (dx/distance) * force;
-                        target.velocityY -= (dy/distance) * force;
+                    const x = rect.left + rect.width / 2;
+                    const y = rect.top + rect.height / 2;
+
+                    // Calculate direction to player
+                    const dx = playerCenterX - x;
+                    const dy = playerCenterY - y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    // Move towards player
+                    const force = 0.2;
+                    if (distance > 0) {
+                        target.velocityX += (dx / distance) * force;
+                        target.velocityY += (dy / distance) * force;
                     }
-                    
+
                     // Apply velocity
-                    const speedLimit = 2;
-                    const currentSpeed = Math.sqrt(target.velocityX**2 + target.velocityY**2);
+                    const speedLimit = .2;
+                    const currentSpeed = Math.sqrt(target.velocityX ** 2 + target.velocityY ** 2);
                     if (currentSpeed > speedLimit) {
                         target.velocityX = (target.velocityX / currentSpeed) * speedLimit;
                         target.velocityY = (target.velocityY / currentSpeed) * speedLimit;
                     }
-                    
+
+                    // Update position
                     let newX = parseFloat(target.element.style.left) + target.velocityX;
                     let newY = parseFloat(target.element.style.top) + target.velocityY;
-                    
+
                     // Constrain within game container
+                    const bounds = gameContainer.getBoundingClientRect();
                     const targetWidth = rect.width;
                     const targetHeight = rect.height;
                     if (newX < bounds.left) {
@@ -205,14 +225,35 @@
                         newY = bounds.bottom - targetHeight;
                         target.velocityY *= -0.5;
                     }
-                    
+
                     target.element.style.left = `${newX}px`;
                     target.element.style.top = `${newY}px`;
+
+                    // Check collision with player
+                    const currentRect = target.element.getBoundingClientRect();
+                    const currentX = currentRect.left + currentRect.width / 2;
+                    const currentY = currentRect.top + currentRect.height / 2;
+                    const collisionDistance = Math.sqrt(
+                        (currentX - playerCenterX) ** 2 + 
+                        (currentY - playerCenterY) ** 2
+                    );
+
+                    if (collisionDistance < 25) { // Collision radius
+                        target.alive = false;
+                        target.element.classList.add('dead');
+                        target.element.dataset.alive = "false";
+                        checkVictory();
+                    }
                 });
-                
+
                 requestAnimationFrame(animate);
             }
             animate();
+        }
+
+        function gameOver() {
+            alert('Game Over!');
+            resetGame();
         }
 
         function handleTargetClick(targetElement, index) {
@@ -227,7 +268,6 @@
 
         function handleBinaryOperation(targetElement, index) {
             if (!binaryOperationState.active) {
-                // First selection
                 binaryOperationState = {
                     active: true,
                     firstTarget: targetElement,
@@ -235,11 +275,9 @@
                 };
                 targetElement.classList.add('operation-selected');
             } else if (binaryOperationState.firstIndex === index) {
-                // Clicked the same target twice - reset
                 binaryOperationState.firstTarget.classList.remove('operation-selected');
                 binaryOperationState = { active: false, firstTarget: null, firstIndex: null };
             } else {
-                // Second selection
                 const firstIndex = binaryOperationState.firstIndex;
                 const firstExpr = targets[firstIndex].expression;
                 const secondExpr = targets[index].expression;
@@ -261,15 +299,12 @@
                             break;
                     }
 
-                    // Update first target
                     targets[firstIndex].expression = newExpr;
                     binaryOperationState.firstTarget.innerHTML = `\\( ${math.parse(newExpr).toTex()} \\)`;
                     
-                    // Kill second target
                     targets[index].alive = false;
                     targetElement.classList.add('dead');
                     
-                    // Reset styles and state
                     binaryOperationState.firstTarget.classList.remove('operation-selected');
                     binaryOperationState = { active: false, firstTarget: null, firstIndex: null };
                     operatorCount++;
@@ -337,6 +372,8 @@
         function resetGame() {
             operatorCount = 0;
             selectedOperator = null;
+            playerHealth = 5;
+            updateHealthDisplay();
             binaryOperationState = { active: false, firstTarget: null, firstIndex: null };
             document.getElementById('operator-count').textContent = `Operators Used: 0`;
             document.querySelectorAll('.operator').forEach(btn => 
@@ -345,7 +382,6 @@
         }
 
         function selectOperator(op) {
-            // Reset any binary operation in progress
             if (binaryOperationState.active) {
                 binaryOperationState.firstTarget?.classList.remove('operation-selected');
                 binaryOperationState = { active: false, firstTarget: null, firstIndex: null };
@@ -357,8 +393,8 @@
             event.target.classList.add('selected-operator');
         }
 
-        // Initial setup
         initializeTargets();
+        updateHealthDisplay();
     </script>
 </body>
 </html>
