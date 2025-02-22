@@ -2,8 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <link rel="shortcut icon" type="image/png" href="calcwars.png">
+    <link rel="stylesheet" href="style.css">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Math Wars</title>
+    <title>CalcWars</title>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.9.0/math.min.js"></script>
@@ -16,11 +19,11 @@
         }
         #game-container {
             position: relative;
-            width: 90vw;
-            height: 60vh;
+            width: 95vw;
+            height: 80vh;
             margin: 20px auto;
             border: 3px solid #333;
-            border-radius: 10px;
+            border-radius: 5px;
         }
         #player {
             position: absolute;
@@ -29,7 +32,7 @@
             transform: translate(-50%, -50%);
             width: 20px;
             height: 20px;
-            background-color: red;
+            background-color: rgb(255, 128, 0);
             border-radius: 50%;
             z-index: 999;
         }
@@ -74,9 +77,10 @@
             cursor: pointer;
             transition: all 0.2s;
             min-width: 50px;
+            border-radius: 10px;
         }
         button.selected-operator {
-            background-color: #44ff44;
+            background-color: #75ee75;
             transform: scale(1.1);
         }
         #operator-count {
@@ -88,7 +92,7 @@
         #health-display {
             position: fixed;
             top: 10px;
-            left: 150px;
+            left: 200px;
             font-size: 18px;
         }
         #reset-button {
@@ -106,10 +110,12 @@
         <div id="player"></div>
     </div>
     <div class="operator-panel">
-        <button class="operator" onclick="selectOperator('ln')">ln(x)</button>
-        <button class="operator" onclick="selectOperator('exp')">e^x</button>
-        <button class="operator" onclick="selectOperator('diff')">d/dx</button>
-        <button class="operator" onclick="selectOperator('recip')">1/x</button>
+        <button class="operator" onclick="selectOperator('ln')">\(\ ln(x) \)</button>
+        <button class="operator" onclick="selectOperator('exp')">\( e^x \)</button>
+        <button class="operator" onclick="selectOperator('diff')">\( \frac{d}{dx} \)</button>
+        <button class="operator" onclick="selectOperator('int')">\( \int \, dx \)</button>
+        <button class="operator" onclick="selectOperator('recip')">\( \frac{1}{x} \)</button>
+        <button class="operator" onclick="selectOperator('square')">\( x^2 \)</button>
         <button class="operator" onclick="selectOperator('add')">+</button>
         <button class="operator" onclick="selectOperator('sub')">-</button>
         <button class="operator" onclick="selectOperator('mul')">×</button>
