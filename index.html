@@ -22,8 +22,6 @@
             width: 95vw;
             height: 80vh;
             margin: 20px auto;
-            border: 3px solid #333;
-            border-radius: 5px;
         }
         #player {
             position: absolute;
@@ -49,6 +47,8 @@
         .target.dead {
             opacity: 0.3;
             transform: scale(0.8) translate(-50%, -50%);
+            border-color: #c8a0a0;
+            color: #6b0909;
             pointer-events: none;
         }
         .target.selected {
@@ -100,9 +100,53 @@
             top: 10px;
             right: 10px;
         }
+
+        /* Title Screen Styles */
+        #title-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-family: Arial, sans-serif;
+            z-index: 1000;
+        }
+
+        #title-screen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        #start-button {
+            padding: 10px 20px;
+            font-size: 24px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        #start-button:hover {
+            background-color: #45a049;
+        }
     </style>
 </head>
 <body>
+    <!-- Title Screen -->
+    <div id="title-screen">
+        <h1>CalcWars</h1>
+        <button id="start-button">Click to Begin</button>
+    </div>
+
+    <!-- Game UI -->
     <div id="operator-count">Operators Used: 0</div>
     <div id="health-display">Health: 5</div>
     <button id="reset-button" onclick="resetGame()">Reset</button>
@@ -126,7 +170,7 @@
         let operatorCount = 0;
         let selectedOperator = null;
         let targets = [];
-        let playerHealth = 5;
+        let health = 5;
         let binaryOperationState = {
             active: false,
             firstTarget: null,
@@ -134,9 +178,24 @@
         };
         const initialEquations = ["math.asin(x)", "math.atan(x)", "sin(x)", "tan(x)", "x^5", "e^(2x)", "x^3 + x^2", "4", "3", "2x", "5x"];
         const gameContainer = document.getElementById('game-container');
+
+        // Add title screen functionality
+        document.addEventListener('DOMContentLoaded', function () {
+            const titleScreen = document.getElementById('title-screen');
+            const startButton = document.getElementById('start-button');
+
+            startButton.addEventListener('click', function () {
+                titleScreen.style.display = 'none';
+                initializeTargets();
+                updateHealthDisplay();
+            });
+        });
         
         function updateHealthDisplay() {
-            document.getElementById('health-display').textContent = `Health: ${playerHealth}`;
+            document.getElementById('health-display').textContent = `Health: ${health}`;
+            if (health == 0) {
+                resetGame();
+            }
         }
 
         function initializeTargets() {
@@ -211,7 +270,7 @@
                     let newX = parseFloat(target.element.style.left) + target.velocityX;
                     let newY = parseFloat(target.element.style.top) + target.velocityY;
 
-                    // Constrain within game container
+                    /*// Constrain within game container
                     const bounds = gameContainer.getBoundingClientRect();
                     const targetWidth = rect.width;
                     const targetHeight = rect.height;
@@ -230,7 +289,7 @@
                     if (newY > bounds.bottom - targetHeight) {
                         newY = bounds.bottom - targetHeight;
                         target.velocityY *= -0.5;
-                    }
+                    }*/
 
                     target.element.style.left = `${newX}px`;
                     target.element.style.top = `${newY}px`;
@@ -248,6 +307,9 @@
                         target.alive = false;
                         target.element.classList.add('dead');
                         target.element.dataset.alive = "false";
+                        
+                        health --;
+                        updateHealthDisplay();
                         checkVictory();
                     }
                 });
@@ -270,6 +332,16 @@
             } else {
                 applyUnaryOperator(targetElement, index);
             }
+        }
+
+        // Helper function to remove a dead target after a delay
+        function removeDeadTarget(targetElement, index) {
+            setTimeout(() => {
+                if (targetElement && targetElement.parentElement) {
+                    targetElement.remove(); // Remove the element from the DOM
+                    targets[index].element = null; // Clear the reference to the removed element
+                }
+            }, 1000); // 1 second delay
         }
 
         function handleBinaryOperation(targetElement, index) {
@@ -310,6 +382,7 @@
                     
                     targets[index].alive = false;
                     targetElement.classList.add('dead');
+                    removeDeadTarget(targetElement, index);
                     
                     binaryOperationState.firstTarget.classList.remove('operation-selected');
                     binaryOperationState = { active: false, firstTarget: null, firstIndex: null };
@@ -347,9 +420,10 @@
                 const simplified = math.simplify(newExpr).toString();
                 targetElement.innerHTML = `\\( ${math.parse(simplified).toTex()} \\)`;
 
-                if (simplified === "0") {
+                if (simplified == "0") {
                     targetElement.classList.add('dead');
                     targets[index].alive = false;
+                    removeDeadTarget(targetElement, index);
                     checkVictory();
                 }
             } catch (error) {
@@ -369,16 +443,95 @@
             return `log(${expr})`;
         }
 
-        function checkVictory() {
-            if (targets.every(t => !t.alive)) {
-                alert(`Victory! All targets eliminated in ${operatorCount} moves!`);
+        // Add a state object to track active movement keys
+        const movementState = {
+            left: false,
+            right: false,
+            up: false,
+            down: false
+        };
+
+        // Add event listeners for keydown and keyup
+        document.addEventListener('keydown', function(event) {
+            const key = event.key;
+
+            // Map number keys to operators
+            const operatorKeys = {
+                '1': 'ln',
+                '2': 'exp',
+                '3': 'diff',
+                '4': 'int',
+                '5': 'recip',
+                '6': 'square',
+                '7': 'add',
+                '8': 'sub',
+                '9': 'mul',
+                '0': 'div'
+            };
+
+            if (operatorKeys[key]) {
+                selectOperator(operatorKeys[key]);
+                const operatorButton = document.querySelector(`.operator[onclick*="${operatorKeys[key]}"]`);
+                if (operatorButton) {
+                    operatorButton.click();
+                }
             }
+
+            // Update movement state based on key press
+            if (key === 'ArrowLeft' || key === 'a') movementState.left = true;
+            if (key === 'ArrowRight' || key === 'd') movementState.right = true;
+            if (key === 'ArrowUp' || key === 'w') movementState.up = true;
+            if (key === 'ArrowDown' || key === 's') movementState.down = true;
+
+            // Trigger movement update
+            moveAllObjects();
+        });
+
+        document.addEventListener('keyup', function(event) {
+            const key = event.key;
+
+            // Update movement state based on key release
+            if (key === 'ArrowLeft' || key === 'a') movementState.left = false;
+            if (key === 'ArrowRight' || key === 'd') movementState.right = false;
+            if (key === 'ArrowUp' || key === 'w') movementState.up = false;
+            if (key === 'ArrowDown' || key === 's') movementState.down = false;
+
+            // Trigger movement update
+            moveAllObjects();
+        });
+
+        // Function to move all objects based on movement state
+        function moveAllObjects() {
+            const moveDistance = 15; // Distance to move objects per frame
+
+            targets.forEach(target => {
+                let deltaX = 0;
+                let deltaY = 0;
+
+                // Calculate horizontal movement
+                if (movementState.left) deltaX += moveDistance;
+                if (movementState.right) deltaX -= moveDistance;
+
+                // Calculate vertical movement
+                if (movementState.up) deltaY += moveDistance;
+                if (movementState.down) deltaY -= moveDistance;
+
+                // Update position
+                const currentX = parseFloat(target.element.style.left);
+                const currentY = parseFloat(target.element.style.top);
+                target.element.style.left = `${currentX + deltaX}px`;
+                target.element.style.top = `${currentY + deltaY}px`;
+            });
+        }
+
+        function checkVictory() {
+            // later
         }
 
         function resetGame() {
             operatorCount = 0;
             selectedOperator = null;
-            playerHealth = 5;
+            health = 5;
             updateHealthDisplay();
             binaryOperationState = { active: false, firstTarget: null, firstIndex: null };
             document.getElementById('operator-count').textContent = `Operators Used: 0`;
@@ -398,9 +551,6 @@
                 btn.classList.remove('selected-operator'));
             event.target.classList.add('selected-operator');
         }
-
-        initializeTargets();
-        updateHealthDisplay();
     </script>
 </body>
 </html>
