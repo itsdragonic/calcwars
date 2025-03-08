@@ -1,556 +1,135 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <link rel="shortcut icon" type="image/png" href="calcwars.png">
-    <link rel="stylesheet" href="style.css">
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CalcWars</title>
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.9.0/math.min.js"></script>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 0;
-            overflow: hidden;
-            height: 100vh;
-        }
-        #game-container {
-            position: relative;
-            width: 95vw;
-            height: 80vh;
-            margin: 20px auto;
-        }
-        #player {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            width: 20px;
-            height: 20px;
-            background-color: rgb(255, 128, 0);
-            border-radius: 50%;
-            z-index: 999;
-        }
-        .target {
-            position: absolute;
-            cursor: pointer;
-            padding: 10px;
-            border: 2px solid #333;
-            border-radius: 5px;
-            background-color: white;
-            transition: all 0.2s;
-            transform: translate(-50%, -50%);
-        }
-        .target.dead {
-            opacity: 0.3;
-            transform: scale(0.8) translate(-50%, -50%);
-            border-color: #c8a0a0;
-            color: #6b0909;
-            pointer-events: none;
-        }
-        .target.selected {
-            border-color: #ff4444;
-            box-shadow: 0 0 10px rgba(255,68,68,0.5);
-        }
-        .target.operation-selected {
-            background-color: #ffcccc;
-        }
-        .operator-panel {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255,255,255,0.9);
-            padding: 10px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
-            display: flex;
-            gap: 5px;
-        }
-        button.operator {
-            font-size: 18px;
-            margin: 5px;
-            padding: 10px 15px;
-            cursor: pointer;
-            transition: all 0.2s;
-            min-width: 50px;
-            border-radius: 10px;
-        }
-        button.selected-operator {
-            background-color: #75ee75;
-            transform: scale(1.1);
-        }
-        #operator-count {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            font-size: 18px;
-        }
-        #health-display {
-            position: fixed;
-            top: 10px;
-            left: 200px;
-            font-size: 18px;
-        }
-        #reset-button {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-        }
-
-        /* Title Screen Styles */
-        #title-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-family: Arial, sans-serif;
-            z-index: 1000;
-        }
-
-        #title-screen h1 {
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
-
-        #start-button {
-            padding: 10px 20px;
-            font-size: 24px;
-            cursor: pointer;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-        }
-
-        #start-button:hover {
-            background-color: #45a049;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2D Shooter Game</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #111;
+    }
+    canvas {
+      border: 1px solid #333;
+    }
+    .ui {
+      position: absolute;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    .health {
+      top: 10px;
+      left: 10px;
+    }
+    .enemies-left {
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .hotbar {
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 5px;
+    }
+    .hotbar-slot {
+      width: 40px;
+      height: 40px;
+      border: 2px solid #555;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #222;
+    }
+    .hotbar-slot.selected {
+      border-color: #fff;
+    }
+    .reset-button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      color: white;
+      font-family: Arial, sans-serif;
+      cursor: pointer;
+      padding: 5px 10px;
+      border: 1px solid white;
+      border-radius: 5px;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+    .reset-button:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+    .health-potion {
+      position: absolute;
+      bottom: 10%;
+      right: 10px;
+      color: white;
+      font-family: Arial, sans-serif;
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 5px 10px;
+      border-radius: 5px;
+    }
+    .screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      font-family: Arial, sans-serif;
+      z-index: 10;
+    }
+    .screen h1 {
+      font-size: 3rem;
+      margin: 0;
+    }
+    .screen h2 {
+      font-size: 2rem;
+      margin: 10px 0 0;
+    }
+    #deathScreen {
+      display: none; /* Hidden by default */
+    }
+  </style>
 </head>
 <body>
-    <!-- Title Screen -->
-    <div id="title-screen">
-        <h1>CalcWars</h1>
-        <button id="start-button">Click to Begin</button>
-    </div>
-
-    <!-- Game UI -->
-    <div id="operator-count">Operators Used: 0</div>
-    <div id="health-display">Health: 5</div>
-    <button id="reset-button" onclick="resetGame()">Reset</button>
-    <div id="game-container">
-        <div id="player"></div>
-    </div>
-    <div class="operator-panel">
-        <button class="operator" onclick="selectOperator('ln')">\(\ ln(x) \)</button>
-        <button class="operator" onclick="selectOperator('exp')">\( e^x \)</button>
-        <button class="operator" onclick="selectOperator('diff')">\( \frac{d}{dx} \)</button>
-        <button class="operator" onclick="selectOperator('int')">\( \int \, dx \)</button>
-        <button class="operator" onclick="selectOperator('recip')">\( \frac{1}{x} \)</button>
-        <button class="operator" onclick="selectOperator('square')">\( x^2 \)</button>
-        <button class="operator" onclick="selectOperator('add')">+</button>
-        <button class="operator" onclick="selectOperator('sub')">-</button>
-        <button class="operator" onclick="selectOperator('mul')">×</button>
-        <button class="operator" onclick="selectOperator('div')">÷</button>
-    </div>
-
-    <script>
-        let operatorCount = 0;
-        let selectedOperator = null;
-        let targets = [];
-        let health = 5;
-        let binaryOperationState = {
-            active: false,
-            firstTarget: null,
-            firstIndex: null
-        };
-        const initialEquations = ["math.asin(x)", "math.atan(x)", "sin(x)", "tan(x)", "x^5", "e^(2x)", "x^3 + x^2", "4", "3", "2x", "5x"];
-        const gameContainer = document.getElementById('game-container');
-
-        // Add title screen functionality
-        document.addEventListener('DOMContentLoaded', function () {
-            const titleScreen = document.getElementById('title-screen');
-            const startButton = document.getElementById('start-button');
-
-            startButton.addEventListener('click', function () {
-                titleScreen.style.display = 'none';
-                initializeTargets();
-                updateHealthDisplay();
-            });
-        });
-        
-        function updateHealthDisplay() {
-            document.getElementById('health-display').textContent = `Health: ${health}`;
-            if (health == 0) {
-                resetGame();
-            }
-        }
-
-        function initializeTargets() {
-            gameContainer.innerHTML = '<div id="player"></div>';
-            targets = initialEquations.map((eq, i) => {
-                const el = document.createElement('div');
-                el.className = 'target';
-                
-                const bounds = gameContainer.getBoundingClientRect();
-                const x = bounds.left + Math.random() * bounds.width;
-                const y = bounds.top + Math.random() * bounds.height;
-                
-                el.style.left = `${x}px`;
-                el.style.top = `${y}px`;
-                el.innerHTML = `\\( ${math.parse(eq).toTex()} \\)`;
-                el.dataset.expression = eq;
-                el.dataset.alive = "true";
-                
-                el.velocityX = 0;
-                el.velocityY = 0;
-                
-                el.onclick = () => handleTargetClick(el, i);
-                gameContainer.appendChild(el);
-                return {
-                    element: el,
-                    expression: eq,
-                    alive: true,
-                    velocityX: el.velocityX,
-                    velocityY: el.velocityY
-                };
-            });
-            
-            MathJax.typesetPromise();
-            startMovement();
-        }
-
-        function startMovement() {
-            function animate() {
-                const playerRect = document.getElementById('player').getBoundingClientRect();
-                const playerCenterX = playerRect.left + playerRect.width / 2;
-                const playerCenterY = playerRect.top + playerRect.height / 2;
-
-                targets.forEach(target => {
-                    if (!target.alive) return;
-
-                    // Get element position
-                    const rect = target.element.getBoundingClientRect();
-                    const x = rect.left + rect.width / 2;
-                    const y = rect.top + rect.height / 2;
-
-                    // Calculate direction to player
-                    const dx = playerCenterX - x;
-                    const dy = playerCenterY - y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-
-                    // Move towards player
-                    const force = 0.2;
-                    if (distance > 0) {
-                        target.velocityX += (dx / distance) * force;
-                        target.velocityY += (dy / distance) * force;
-                    }
-
-                    // Apply velocity
-                    const speedLimit = .2;
-                    const currentSpeed = Math.sqrt(target.velocityX ** 2 + target.velocityY ** 2);
-                    if (currentSpeed > speedLimit) {
-                        target.velocityX = (target.velocityX / currentSpeed) * speedLimit;
-                        target.velocityY = (target.velocityY / currentSpeed) * speedLimit;
-                    }
-
-                    // Update position
-                    let newX = parseFloat(target.element.style.left) + target.velocityX;
-                    let newY = parseFloat(target.element.style.top) + target.velocityY;
-
-                    /*// Constrain within game container
-                    const bounds = gameContainer.getBoundingClientRect();
-                    const targetWidth = rect.width;
-                    const targetHeight = rect.height;
-                    if (newX < bounds.left) {
-                        newX = bounds.left;
-                        target.velocityX *= -0.5;
-                    }
-                    if (newX > bounds.right - targetWidth) {
-                        newX = bounds.right - targetWidth;
-                        target.velocityX *= -0.5;
-                    }
-                    if (newY < bounds.top) {
-                        newY = bounds.top;
-                        target.velocityY *= -0.5;
-                    }
-                    if (newY > bounds.bottom - targetHeight) {
-                        newY = bounds.bottom - targetHeight;
-                        target.velocityY *= -0.5;
-                    }*/
-
-                    target.element.style.left = `${newX}px`;
-                    target.element.style.top = `${newY}px`;
-
-                    // Check collision with player
-                    const currentRect = target.element.getBoundingClientRect();
-                    const currentX = currentRect.left + currentRect.width / 2;
-                    const currentY = currentRect.top + currentRect.height / 2;
-                    const collisionDistance = Math.sqrt(
-                        (currentX - playerCenterX) ** 2 + 
-                        (currentY - playerCenterY) ** 2
-                    );
-
-                    if (collisionDistance < 25) { // Collision radius
-                        target.alive = false;
-                        target.element.classList.add('dead');
-                        target.element.dataset.alive = "false";
-                        
-                        health --;
-                        updateHealthDisplay();
-                        checkVictory();
-                    }
-                });
-
-                requestAnimationFrame(animate);
-            }
-            animate();
-        }
-
-        function gameOver() {
-            alert('Game Over!');
-            resetGame();
-        }
-
-        function handleTargetClick(targetElement, index) {
-            if (!targets[index].alive) return;
-
-            if (['add', 'sub', 'mul', 'div'].includes(selectedOperator)) {
-                handleBinaryOperation(targetElement, index);
-            } else {
-                applyUnaryOperator(targetElement, index);
-            }
-        }
-
-        // Helper function to remove a dead target after a delay
-        function removeDeadTarget(targetElement, index) {
-            setTimeout(() => {
-                if (targetElement && targetElement.parentElement) {
-                    targetElement.remove(); // Remove the element from the DOM
-                    targets[index].element = null; // Clear the reference to the removed element
-                }
-            }, 1000); // 1 second delay
-        }
-
-        function handleBinaryOperation(targetElement, index) {
-            if (!binaryOperationState.active) {
-                binaryOperationState = {
-                    active: true,
-                    firstTarget: targetElement,
-                    firstIndex: index
-                };
-                targetElement.classList.add('operation-selected');
-            } else if (binaryOperationState.firstIndex === index) {
-                binaryOperationState.firstTarget.classList.remove('operation-selected');
-                binaryOperationState = { active: false, firstTarget: null, firstIndex: null };
-            } else {
-                const firstIndex = binaryOperationState.firstIndex;
-                const firstExpr = targets[firstIndex].expression;
-                const secondExpr = targets[index].expression;
-                let newExpr;
-
-                try {
-                    switch(selectedOperator) {
-                        case 'add': 
-                            newExpr = math.simplify(`(${firstExpr}) + (${secondExpr})`).toString();
-                            break;
-                        case 'sub': 
-                            newExpr = math.simplify(`(${firstExpr}) - (${secondExpr})`).toString();
-                            break;
-                        case 'mul': 
-                            newExpr = `(${firstExpr}) * (${secondExpr})`;
-                            break;
-                        case 'div': 
-                            newExpr = `(${firstExpr}) / (${secondExpr})`;
-                            break;
-                    }
-
-                    targets[firstIndex].expression = newExpr;
-                    binaryOperationState.firstTarget.innerHTML = `\\( ${math.parse(newExpr).toTex()} \\)`;
-                    
-                    targets[index].alive = false;
-                    targetElement.classList.add('dead');
-                    removeDeadTarget(targetElement, index);
-                    
-                    binaryOperationState.firstTarget.classList.remove('operation-selected');
-                    binaryOperationState = { active: false, firstTarget: null, firstIndex: null };
-                    operatorCount++;
-                    document.getElementById('operator-count').textContent = `Operators Used: ${operatorCount}`;
-                    MathJax.typesetPromise();
-                    checkVictory();
-                } catch (error) {
-                    alert(`Cannot perform operation: ${error.message}`);
-                    binaryOperationState.firstTarget.classList.remove('operation-selected');
-                    binaryOperationState = { active: false, firstTarget: null, firstIndex: null };
-                }
-            }
-        }
-
-        function applyUnaryOperator(targetElement, index) {
-            if (!selectedOperator || !targets[index].alive) return;
-
-            operatorCount++;
-            document.getElementById('operator-count').textContent = `Operators Used: ${operatorCount}`;
-
-            let newExpr;
-            const currentExpr = targets[index].expression;
-
-            try {
-                switch(selectedOperator) {
-                    case 'ln': newExpr = handleNaturalLog(currentExpr); break;
-                    case 'exp': newExpr = `e^(${currentExpr})`; break;
-                    case 'diff': newExpr = math.derivative(currentExpr, 'x').toString(); break;
-                    case 'recip': newExpr = `1/(${currentExpr})`; break;
-                }
-
-                targets[index].expression = newExpr;
-                targetElement.dataset.expression = newExpr;
-                const simplified = math.simplify(newExpr).toString();
-                targetElement.innerHTML = `\\( ${math.parse(simplified).toTex()} \\)`;
-
-                if (simplified == "0") {
-                    targetElement.classList.add('dead');
-                    targets[index].alive = false;
-                    removeDeadTarget(targetElement, index);
-                    checkVictory();
-                }
-            } catch (error) {
-                alert(`Cannot apply ${selectedOperator} to this expression!`);
-            }
-            MathJax.typesetPromise();
-        }
-
-        function handleNaturalLog(expr) {
-            const node = math.parse(expr);
-            if (node.isOperatorNode && node.op === '^' && node.args[0].toString() === 'e') {
-                return node.args[1].toString();
-            }
-            if (node.isFunctionNode && node.name === 'exp') {
-                return node.args[0].toString();
-            }
-            return `log(${expr})`;
-        }
-
-        // Add a state object to track active movement keys
-        const movementState = {
-            left: false,
-            right: false,
-            up: false,
-            down: false
-        };
-
-        // Add event listeners for keydown and keyup
-        document.addEventListener('keydown', function(event) {
-            const key = event.key;
-
-            // Map number keys to operators
-            const operatorKeys = {
-                '1': 'ln',
-                '2': 'exp',
-                '3': 'diff',
-                '4': 'int',
-                '5': 'recip',
-                '6': 'square',
-                '7': 'add',
-                '8': 'sub',
-                '9': 'mul',
-                '0': 'div'
-            };
-
-            if (operatorKeys[key]) {
-                selectOperator(operatorKeys[key]);
-                const operatorButton = document.querySelector(`.operator[onclick*="${operatorKeys[key]}"]`);
-                if (operatorButton) {
-                    operatorButton.click();
-                }
-            }
-
-            // Update movement state based on key press
-            if (key === 'ArrowLeft' || key === 'a') movementState.left = true;
-            if (key === 'ArrowRight' || key === 'd') movementState.right = true;
-            if (key === 'ArrowUp' || key === 'w') movementState.up = true;
-            if (key === 'ArrowDown' || key === 's') movementState.down = true;
-
-            // Trigger movement update
-            moveAllObjects();
-        });
-
-        document.addEventListener('keyup', function(event) {
-            const key = event.key;
-
-            // Update movement state based on key release
-            if (key === 'ArrowLeft' || key === 'a') movementState.left = false;
-            if (key === 'ArrowRight' || key === 'd') movementState.right = false;
-            if (key === 'ArrowUp' || key === 'w') movementState.up = false;
-            if (key === 'ArrowDown' || key === 's') movementState.down = false;
-
-            // Trigger movement update
-            moveAllObjects();
-        });
-
-        // Function to move all objects based on movement state
-        function moveAllObjects() {
-            const moveDistance = 15; // Distance to move objects per frame
-
-            targets.forEach(target => {
-                let deltaX = 0;
-                let deltaY = 0;
-
-                // Calculate horizontal movement
-                if (movementState.left) deltaX += moveDistance;
-                if (movementState.right) deltaX -= moveDistance;
-
-                // Calculate vertical movement
-                if (movementState.up) deltaY += moveDistance;
-                if (movementState.down) deltaY -= moveDistance;
-
-                // Update position
-                const currentX = parseFloat(target.element.style.left);
-                const currentY = parseFloat(target.element.style.top);
-                target.element.style.left = `${currentX + deltaX}px`;
-                target.element.style.top = `${currentY + deltaY}px`;
-            });
-        }
-
-        function checkVictory() {
-            // later
-        }
-
-        function resetGame() {
-            operatorCount = 0;
-            selectedOperator = null;
-            health = 5;
-            updateHealthDisplay();
-            binaryOperationState = { active: false, firstTarget: null, firstIndex: null };
-            document.getElementById('operator-count').textContent = `Operators Used: 0`;
-            document.querySelectorAll('.operator').forEach(btn => 
-                btn.classList.remove('selected-operator'));
-            initializeTargets();
-        }
-
-        function selectOperator(op) {
-            if (binaryOperationState.active) {
-                binaryOperationState.firstTarget?.classList.remove('operation-selected');
-                binaryOperationState = { active: false, firstTarget: null, firstIndex: null };
-            }
-
-            selectedOperator = op;
-            document.querySelectorAll('.operator').forEach(btn => 
-                btn.classList.remove('selected-operator'));
-            event.target.classList.add('selected-operator');
-        }
-    </script>
+  <canvas id="gameCanvas"></canvas>
+  <div class="ui health">Health: <span id="health">100</span></div>
+  <div class="ui enemies-left">Enemies Left: <span id="enemiesLeft">0</span></div>
+  <div class="ui reset-button">Reset</div>
+  <div class="ui health-potion">
+    Health Potions [G]: <span id="healthPotionCount">5</span>
+  </div>
+  <div class="ui hotbar" id="hotbar">
+    <div class="hotbar-slot" data-index="0">0</div>
+    <div class="hotbar-slot" data-index="1">1</div>
+    <div class="hotbar-slot" data-index="2">2</div>
+    <div class="hotbar-slot" data-index="3">3</div>
+    <div class="hotbar-slot" data-index="4">4</div>
+    <div class="hotbar-slot" data-index="5">5</div>
+    <div class="hotbar-slot" data-index="6">6</div>
+    <div class="hotbar-slot" data-index="7">7</div>
+    <div class="hotbar-slot" data-index="8">8</div>
+    <div class="hotbar-slot" data-index="9">9</div>
+  </div>
+  <div id="startScreen" class="screen">
+    <h1>Click to Start</h1>
+  </div>
+  <div id="deathScreen" class="screen">
+    <h1>You Died!</h1>
+    <h2>Click to Restart</h2>
+  </div>
+  <script src="game.js"></script>
 </body>
 </html>
